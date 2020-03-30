@@ -1,12 +1,35 @@
 const FeedParser = require('feedparser');
 const request = require('request');
- 
-const req = request('http://friendsatthetable.net/rss');
-const feedparser = new FeedParser();
+
+const loadFeed = () => {
+  const req = request('http://friendsatthetable.net/rss');
+  const feedparser = new FeedParser();
+  const feed = [];
+
+  return new Promise((resolve, reject) => {
+    req.on('response', function (res) {
+      if (res.statusCode !== 200) {
+        reject(res.statusCode);
+      } else {
+        this.pipe(feedparser);
+      }
+    });
+     
+    feedparser.on('error', reject)
+     
+    feedparser.on('readable', function () {
+      let item;
+    
+      while (item = this.read()) {
+        if (item) feed.push(item);
+      }
+    });
+
+    feedparser.on('end', () => resolve(feed));
+  });
+};
 
 function parseDur (ep) {
-  if (!ep) return;
-  
   let [h, m, s] = ep['itunes:duration']['#'].split(':').map(t => +t);
   
   if (!s) {
@@ -21,28 +44,11 @@ function parseDur (ep) {
   
   return dur;
 }
- 
-req.on('response', function (res) {
-  const stream = this;
- 
-  if (res.statusCode !== 200) {
-    this.emit('error', new Error('Bad status code'));
-  }
-  else {
-    stream.pipe(feedparser);
-  }
-});
- 
-feedparser.on('error', function (error) {
-  // always handle errors
-});
- 
-feedparser.on('readable', function () {
-  const stream = this;
-  let item;
-  let total = 0;
- 
-  while (item = stream.read()) {
-    console.log(parseDur(item));
-  }
-});
+
+async function main () {
+  const feed = await loadFeed();
+  const dur = feed.map(parseDur).reduce((a, b) => a + b, 0);
+  console.log(dur);
+}
+
+main();
