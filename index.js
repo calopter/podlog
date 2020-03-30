@@ -12,10 +12,14 @@ function parseDur (ep) {
   if (!s) {
     s = m;
     m = h;
-    h = null;
+    h = 0;
   }
+
+  let dur = s;
+  dur += m * 60;
+  dur += h * 3600;
   
-  return [h, m, s];
+  return dur;
 }
  
 req.on('response', function (res) {
@@ -36,6 +40,7 @@ feedparser.on('error', function (error) {
 feedparser.on('readable', function () {
   const stream = this;
   let item;
+  let total = 0;
  
   while (item = stream.read()) {
     console.log(parseDur(item));
