@@ -25,11 +25,11 @@ const loadFeed = () => {
       }
     });
 
-    feedparser.on('end', () => resolve(feed));
+    feedparser.on('end', () => resolve(feed.reverse()));
   });
 };
 
-function parseDur (ep) {
+const parseDur = ep => {
   let [h, m, s] = ep['itunes:duration']['#'].split(':').map(t => +t);
   
   if (!s) {
@@ -45,10 +45,20 @@ function parseDur (ep) {
   return dur;
 }
 
+function * upTo ([ ep, ...feed ], title) {
+  if (!ep) return;
+  if (ep.title.includes(title)) return yield ep;
+  yield ep;
+  yield * upTo(feed, title);
+}
+
 async function main () {
+  const title = process.argv[2]
+  if (!title) return console.log('please supply a full episode title you\'ve completed up to');
+  
   const feed = await loadFeed();
-  const dur = feed.map(parseDur).reduce((a, b) => a + b, 0);
-  console.log(dur);
+  const dur = [...upTo(feed, title)].map(parseDur).reduce((a, b) => a + b, 0);
+  console.log(dur / 3600, 'hours');
 }
 
 main();
